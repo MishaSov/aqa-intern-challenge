@@ -1,20 +1,23 @@
 import { test, expect } from '@playwright/test';
-import {WidgetPage} from "./widget.page";
+import { WidgetPage } from "./widget.page";
 
 test.describe('Uchi.ru widget ', () => {
   let widgetPage: WidgetPage;
 
-  test.beforeEach(async ({page}) => {
+  test.beforeEach(async ({ page }) => {
     widgetPage = new WidgetPage(page);
 
     // open uchi.ru main page
     await page.goto('/');
 
     // close cookies popup
-    await page.click('._UCHI_COOKIE__button');
+    const cookieButton = page.locator('._UCHI_COOKIE__button');
+    if (await cookieButton.isVisible().catch(() => false)) {
+      await cookieButton.click();
+    }
   });
 
-  test('opens', async ({page}) => {
+  test('opens', async ({ page }) => {
     await widgetPage.openWidget();
 
     await expect(widgetPage.getWidgetBody()).toBeVisible()
@@ -24,11 +27,22 @@ test.describe('Uchi.ru widget ', () => {
     await widgetPage.openWidget();
 
     const articles = await widgetPage.getPopularArticles();
-
+    expect(articles.length).toBeGreaterThan(0);
     await articles[0].click();
 
     await widgetPage.clickWriteToUs();
 
-    expect(await widgetPage.getTitle()).toEqual('Связь с поддержкой');
+    await expect
+      .poll(() => widgetPage.getTitle(), { timeout: 10000 })
+      .toBe('Связь с поддержкой');
+  });
+
+   test('closes', async ({ page }) => {
+    await widgetPage.openWidget();
+    await expect(widgetPage.getWidgetBody()).toBeVisible();
+
+    await widgetPage.closeWidget();
+
+    await expect(widgetPage.getWidgetBody()).toBeHidden();
   });
 });
